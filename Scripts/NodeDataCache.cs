@@ -126,21 +126,30 @@ namespace XNode {
             System.Reflection.Assembly[] assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
 
             // Loop through assemblies and add node types to list
-            foreach (Assembly assembly in assemblies) {
+            foreach (Assembly assembly in assemblies)
+            {
                 // Skip certain dlls to improve performance
                 string assemblyName = assembly.GetName().Name;
                 int index = assemblyName.IndexOf('.');
                 if (index != -1) assemblyName = assemblyName.Substring(0, index);
-                switch (assemblyName) {
+                switch (assemblyName)
+                {
                     // The following assemblies, and sub-assemblies (eg. UnityEngine.UI) are skipped
                     case "UnityEditor":
                     case "UnityEngine":
                     case "System":
                     case "mscorlib":
-                    case "Microsoft":
                         continue;
                     default:
-                        nodeTypes.AddRange(assembly.GetTypes().Where(t => !t.IsAbstract && baseType.IsAssignableFrom(t)).ToArray());
+                        try
+                        {
+                            nodeTypes.AddRange(assembly.GetTypes().Where(t => !t.IsAbstract && baseType.IsAssignableFrom(t)).ToArray());
+                        }
+                        catch (System.Exception ex)
+                        {
+                            Debug.LogError("Catched exception when building " + assemblyName + " caches");
+                            Debug.LogException(ex);
+                        }
                         break;
                 }
             }
