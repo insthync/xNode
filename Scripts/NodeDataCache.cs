@@ -139,6 +139,7 @@ namespace XNode {
                     case "UnityEngine":
                     case "System":
                     case "mscorlib":
+                    case "Microsoft":
                         continue;
                     default:
                         try
