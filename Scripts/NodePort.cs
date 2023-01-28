@@ -202,7 +202,8 @@ namespace XNode {
 
         /// <summary> Connect this <see cref="NodePort"/> to another </summary>
         /// <param name="port">The <see cref="NodePort"/> to connect to</param>
-        public void Connect(NodePort port) {
+        /// <param name="swapping">Creating while swapping or not?</param>
+        public void Connect(NodePort port, bool swapping = false) {
             if (connections == null) connections = new List<PortConnection>();
             if (port == null) { Debug.LogWarning("Cannot connect to null port"); return; }
             if (port == this) { Debug.LogWarning("Cannot connect port to self."); return; }
@@ -212,13 +213,13 @@ namespace XNode {
             UnityEditor.Undo.RecordObject(node, "Connect Port");
             UnityEditor.Undo.RecordObject(port.node, "Connect Port");
 #endif
-            if (port.connectionType == Node.ConnectionType.Override && port.ConnectionCount != 0) { port.ClearConnections(); }
-            if (connectionType == Node.ConnectionType.Override && ConnectionCount != 0) { ClearConnections(); }
+            if (port.connectionType == Node.ConnectionType.Override && port.ConnectionCount != 0) { port.ClearConnections(swapping); }
+            if (connectionType == Node.ConnectionType.Override && ConnectionCount != 0) { ClearConnections(swapping); }
             connections.Add(new PortConnection(port));
             if (port.connections == null) port.connections = new List<PortConnection>();
             if (!port.IsConnectedTo(this)) port.connections.Add(new PortConnection(this));
-            node.OnCreateConnection(this, port);
-            port.node.OnCreateConnection(this, port);
+            node.OnCreateConnection(this, port, swapping);
+            port.node.OnCreateConnection(this, port, swapping);
         }
 
         public List<NodePort> GetConnections() {
@@ -284,7 +285,7 @@ namespace XNode {
         }
 
         /// <summary> Disconnect this port from another port </summary>
-        public void Disconnect(NodePort port) {
+        public void Disconnect(NodePort port, bool swapping = false) {
             // Remove this ports connection to the other
             for (int i = connections.Count - 1; i >= 0; i--) {
                 if (connections[i].Port == port) {
@@ -297,16 +298,16 @@ namespace XNode {
                     if (port.connections[i].Port == this) {
                         port.connections.RemoveAt(i);
                         // Trigger OnRemoveConnection from this side port
-                        port.node.OnRemoveConnection(port);
+                        port.node.OnRemoveConnection(port, swapping);
                     }
                 }
             }
             // Trigger OnRemoveConnection
-            node.OnRemoveConnection(this);
+            node.OnRemoveConnection(this, swapping);
         }
 
         /// <summary> Disconnect this port from another port </summary>
-        public void Disconnect(int i) {
+        public void Disconnect(int i, bool swapping = false) {
             // Remove the other ports connection to this port
             NodePort otherPort = connections[i].Port;
             if (otherPort != null) {
@@ -316,13 +317,13 @@ namespace XNode {
             connections.RemoveAt(i);
 
             // Trigger OnRemoveConnection
-            node.OnRemoveConnection(this);
-            if (otherPort != null) otherPort.node.OnRemoveConnection(otherPort);
+            node.OnRemoveConnection(this, swapping);
+            if (otherPort != null) otherPort.node.OnRemoveConnection(otherPort, swapping);
         }
 
-        public void ClearConnections() {
+        public void ClearConnections(bool swapping = false) {
             while (connections.Count > 0) {
-                Disconnect(connections[0].Port);
+                Disconnect(connections[0].Port, swapping);
             }
         }
 
@@ -347,16 +348,16 @@ namespace XNode {
             for (int i = 0; i < bConnectionCount; i++)
                 targetPortConnections.Add(targetPort.connections[i].Port);
 
-            ClearConnections();
-            targetPort.ClearConnections();
+            ClearConnections(true);
+            targetPort.ClearConnections(true);
 
             // Add port connections to targetPort
             for (int i = 0; i < portConnections.Count; i++)
-                targetPort.Connect(portConnections[i]);
+                targetPort.Connect(portConnections[i], true);
 
             // Add target port connections to this one
             for (int i = 0; i < targetPortConnections.Count; i++)
-                Connect(targetPortConnections[i]);
+                Connect(targetPortConnections[i], true);
 
         }
 
@@ -380,7 +381,7 @@ namespace XNode {
                 NodePort otherPort = connection.Port;
                 Connect(otherPort);
             }
-            ClearConnections();
+            ClearConnections(false);
         }
 
         /// <summary> Swap connected nodes from the old list with nodes from the new list </summary>
